@@ -50,7 +50,9 @@ function App() {
   const starsRef = useRef<any[]>([]);
   const regionKeyRef = useRef<string | null>(null);
   const [isAudioReady, setIsAudioReady] = useState(false);
+
   const activeOscillatorsRef = useRef<OscillatorNode[]>([]);
+  const [musicStyle, setMusicStyle] = useState<'ambient' | 'classical' | 'spacewave' | 'experimental'>('ambient');
 
 
     useEffect(() => {
@@ -294,6 +296,7 @@ const saveGenerationToDB = async (stars: any[], regionKey: string) => {
 
   // Генерация музыки из данных звезд
   const generateMusicFromStars = async (stars: any[]) => {
+    const style = musicStyle;
     stopAllAudio(); // Останавливаем предыдущую музыку
     setAudioUrl(null);
     setIsAudioReady(false);
@@ -362,20 +365,51 @@ const saveGenerationToDB = async (stars: any[], regionKey: string) => {
       sortedStars.forEach((star, index) => {
         const [ra, dec, mag, bp_rp] = star;
         
-        // Параметры ноты
-        const time = now + index * 0.12;
-        const frequency = 80 + (dec + 90) * 2.5; // Более низкий диапазон
-        const duration = 0.8 + (1 - mag / 15) * 3;
-        const volume = 0.2 + (1 - mag / 15) * 0.8;
-        const pan = (ra / 360) * 2 - 1;
-        
-        // Выбор инструмента на основе цвета звезды (bp_rp)
-        let instrumentType: OscillatorType = 'sine';
-        if (bp_rp !== null) {
-          if (bp_rp < 0.5) instrumentType = 'sine';    // Голубые звезды - чистый тон
-          else if (bp_rp < 1.5) instrumentType = 'triangle'; // Белые/желтые
-          else instrumentType = 'sawtooth';            // Красные
+        const time = now + index * (style === 'classical' ? 0.25 : style === 'ambient' ? 0.5 : 0.15);
+
+        // Частота
+        let frequency = 80 + (dec + 90) * 2.5;
+        if (style === 'classical') {
+          const note = [0, 2, 4, 5, 7, 9, 11][index % 7];
+          frequency = 220 * Math.pow(2, note / 12);
+        } else if (style === 'spacewave') {
+          frequency *= 1.5 + Math.sin(index) * 0.2;
+        } else if (style === 'experimental') {
+          frequency *= Math.random() * 2;
         }
+
+        // Длительность и громкость
+        let duration = 1;
+        let volume = 0.3;
+        if (style === 'ambient') {
+          duration = 3 + Math.random() * 2;
+          volume = 0.1 + Math.random() * 0.2;
+        } else if (style === 'classical') {
+          duration = 0.6 + (1 - mag / 15) * 1.5;
+          volume = 0.3 + (1 - mag / 15) * 0.4;
+        } else if (style === 'spacewave') {
+          duration = 1.2;
+          volume = 0.2 + Math.random() * 0.4;
+        } else if (style === 'experimental') {
+          duration = 0.3 + Math.random() * 3;
+          volume = Math.random();
+        }
+
+        // Панорама
+        const pan = (ra / 360) * 2 - 1;
+
+        // Инструмент
+        let instrumentType: OscillatorType = 'sine';
+        if (style === 'classical') {
+          instrumentType = 'triangle';
+        } else if (style === 'ambient') {
+          instrumentType = 'sine';
+        } else if (style === 'spacewave') {
+          instrumentType = 'square';
+        } else if (style === 'experimental') {
+          instrumentType = ['sine', 'triangle', 'square', 'sawtooth'][index % 4] as OscillatorType;
+        }
+
         
         // Создаём осциллятор
         const oscillator = audioContext.createOscillator();
@@ -980,15 +1014,38 @@ const saveGenerationToDB = async (stars: any[], regionKey: string) => {
                 Generate Music
               </button>
             </div>
+            <div className="flex gap-2 mb-4">
+              {['ambient', 'classical', 'spacewave', 'experimental'].map((style) => (
+                <button
+                  key={style}
+                  onClick={() => setMusicStyle(style as any)}
+                  className={`px-3 py-1 rounded-md text-sm border transition ${
+                    musicStyle === style
+                      ? 'bg-purple-600 text-white border-purple-400'
+                      : 'bg-transparent text-gray-400 border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {style}
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200">
-              {error}
+            <div className="relative mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200">
+              <button
+                onClick={() => setError(null)}
+                className="absolute top-2 right-2 text-red-200 hover:text-white"
+                aria-label="Закрыть"
+              >
+                <X size={16} />
+              </button>
+              <div className="pr-6">
+                {error}
+              </div>
             </div>
           )}
 
-          
 
           {/* Aladin Lite Container */}
           <div 
@@ -1044,8 +1101,6 @@ const saveGenerationToDB = async (stars: any[], regionKey: string) => {
                     Генерация симфонии...
                   </div>
                 )}
-                
-                {!isAudioReady && (
                   <button
                     onClick={stopAllAudio}
                     className="px-3 py-1 bg-red-600/30 hover:bg-red-600/50 rounded-lg flex items-center gap-1 text-sm border border-red-400/30 transition-colors"
@@ -1053,7 +1108,6 @@ const saveGenerationToDB = async (stars: any[], regionKey: string) => {
                     <StopCircle className="h-3 w-3" />
                     Остановить
                   </button>
-                )}
 
                 {isAudioReady && (
                   <>
