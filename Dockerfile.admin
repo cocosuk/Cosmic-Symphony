@@ -1,0 +1,14 @@
+# Dockerfile.admin
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Копируем manifest для server.js и ставим модули
+COPY package*.json ./
+RUN npm install
+
+# Копируем сам server.js (и любые другие файлы, если нужны)
+COPY server.js ./
+
+EXPOSE 3000
+CMD ["node", "server.js"]

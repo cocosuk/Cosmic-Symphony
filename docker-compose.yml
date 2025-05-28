@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=${DATABASE_URL}
+
+  frontend:
+    build:
+      dockerfile: Dockerfile
+    volumes:
+      - /app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=http://backend:4000/api
+
+  admin-support:
+    build:
+      dockerfile: Dockerfile.admin
+    volumes:
+      - /app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development

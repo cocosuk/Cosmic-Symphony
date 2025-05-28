@@ -1,0 +1,22 @@
+# backend/Dockerfile.dev
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 1) Копируем package.json и ставим зависимости
+COPY package*.json ./
+RUN npm install
+
+# 2) Копируем схему Prisma и код
+COPY prisma ./prisma
+COPY src ./src
+
+# 3) Генерируем Prisma Client внутри контейнера
+RUN npx prisma generate
+
+# 4) Копируем всё остальное
+COPY . .
+
+# 5) Открываем порт и запускаем dev-сервер
+EXPOSE 4000
+CMD ["npm", "run", "dev"]
